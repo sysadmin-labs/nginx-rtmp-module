@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
-First release from this repository. It continues Roman Arutyunyan's
-module, whose history is intact here; his repository has had no commit
-since December 2024.
+First release from this repository, carrying on from upstream's v1.2.2. It
+continues Roman Arutyunyan's module, whose history is intact here; his
+repository has had no commit since December 2024.
 
 ### Fixed
 
