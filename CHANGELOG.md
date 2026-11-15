@@ -18,6 +18,15 @@ since December 2024.
   startup, which is how the difference is visible from outside, and that
   is what the gate in `t/00-directives.t` asks for.
 
+- **Two configuration pools were never freed.** Both
+  `ngx_rtmp_live_merge_app_conf` and `ngx_rtmp_core_merge_srv_conf` create
+  a pool of their own with `ngx_create_pool`, hanging off no cycle, so
+  nginx never knew about it and every reload left the previous one behind:
+  4 KB per application and per server for the life of the process, with
+  nothing failing and nothing logged. Both now hang a cleanup on
+  `cf->pool`, which ties the pool to the cycle that created it. Found by
+  the valgrind workflow, which reported them as definitely lost.
+
 ### Changed
 
 - `hls on` or `dash on` without any path now logs a warning instead of

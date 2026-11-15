@@ -43,6 +43,13 @@ filesystem filled up with nothing logged. Registering the path is also
 what makes nginx create the directory at startup, which is how the
 difference is visible from outside: `t/00-directives.t` asks for it.
 
+**Also fixed:** two configuration pools that were created and never
+freed, in the live and the core module. Neither hung off a cycle, so
+nginx never knew about them and every reload left the previous one
+behind — 4 KB per application and per server, for the life of the
+process, with nothing failing and nothing logged. The valgrind workflow
+is what reported them.
+
 `hls on` without any path now says so as a warning instead of writing
 nothing in silence. It is a warning and not an error on purpose, so a
 configuration that starts today still starts.

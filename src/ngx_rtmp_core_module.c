@@ -13,6 +13,7 @@
 
 static void *ngx_rtmp_core_create_main_conf(ngx_conf_t *cf);
 static void *ngx_rtmp_core_create_srv_conf(ngx_conf_t *cf);
+static void ngx_rtmp_core_destroy_pool(void *data);
 static char *ngx_rtmp_core_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static void *ngx_rtmp_core_create_app_conf(ngx_conf_t *cf);
@@ -254,9 +255,17 @@ ngx_rtmp_core_create_srv_conf(ngx_conf_t *cf)
 }
 
 
+static void
+ngx_rtmp_core_destroy_pool(void *data)
+{
+    ngx_destroy_pool((ngx_pool_t *) data);
+}
+
+
 static char *
 ngx_rtmp_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
+    ngx_pool_cleanup_t          *cln;
     ngx_rtmp_core_srv_conf_t *prev = parent;
     ngx_rtmp_core_srv_conf_t *conf = child;
 
@@ -279,10 +288,25 @@ ngx_rtmp_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->busy, prev->busy, 0);
 
     if (prev->pool == NULL) {
+        /*
+         * Same as in the live module: created here, hanging off no cycle,
+         * and never destroyed, so every reload left the previous one
+         * behind.  The cleanup on cf->pool ties it to the cycle.
+         */
         prev->pool = ngx_create_pool(4096, &cf->cycle->new_log);
         if (prev->pool == NULL) {
             return NGX_CONF_ERROR;
         }
+
+        cln = ngx_pool_cleanup_add(cf->pool, 0);
+        if (cln == NULL) {
+            ngx_destroy_pool(prev->pool);
+            prev->pool = NULL;
+            return NGX_CONF_ERROR;
+        }
+
+        cln->handler = ngx_rtmp_core_destroy_pool;
+        cln->data = prev->pool;
     }
 
     conf->pool = prev->pool;

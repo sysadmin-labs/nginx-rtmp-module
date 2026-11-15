@@ -166,11 +166,20 @@ ngx_rtmp_live_create_app_conf(ngx_conf_t *cf)
 }
 
 
+static void
+ngx_rtmp_live_destroy_pool(void *data)
+{
+    ngx_destroy_pool((ngx_pool_t *) data);
+}
+
+
 static char *
 ngx_rtmp_live_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_rtmp_live_app_conf_t *prev = parent;
     ngx_rtmp_live_app_conf_t *conf = child;
+
+    ngx_pool_cleanup_t       *cln;
 
     ngx_conf_merge_value(conf->live, prev->live, 0);
     ngx_conf_merge_value(conf->nbuckets, prev->nbuckets, 1024);
@@ -184,10 +193,27 @@ ngx_rtmp_live_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->play_restart, prev->play_restart, 0);
     ngx_conf_merge_value(conf->idle_streams, prev->idle_streams, 1);
 
+    /*
+     * The pool is created here and was never destroyed: it hangs off no
+     * cycle, so nginx does not know about it, and every reload left the
+     * previous one behind -- 4 KB per application for the life of the
+     * server, invisible because nothing fails and nothing is logged.
+     * Hanging a cleanup on cf->pool, which is the cycle's own pool, is
+     * what ties its lifetime to the cycle that created it.
+     */
     conf->pool = ngx_create_pool(4096, &cf->cycle->new_log);
     if (conf->pool == NULL) {
         return NGX_CONF_ERROR;
     }
+
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        ngx_destroy_pool(conf->pool);
+        return NGX_CONF_ERROR;
+    }
+
+    cln->handler = ngx_rtmp_live_destroy_pool;
+    cln->data = conf->pool;
 
     conf->streams = ngx_pcalloc(cf->pool,
             sizeof(ngx_rtmp_live_stream_t *) * conf->nbuckets);
