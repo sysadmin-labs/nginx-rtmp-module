@@ -19,6 +19,8 @@
 # ci/reload.conf carries the part that differs per module.  It is sourced,
 # with $WORK and $PORT already set, and defines:
 #
+#     RELOAD_MAIN    directives at the top level, outside http{}, may be
+#                    empty -- for a module that lives in a block of its own
 #     RELOAD_HTTP    directives for the http block, may be empty
 #     RELOAD_SERVER  directives for the server block
 #     RELOAD_EXPECT  the body the probe below has to return
@@ -98,6 +100,7 @@ worker_processes $WORKERS;
 error_log $WORK/logs/error.log info;
 pid $WORK/logs/nginx.pid;
 events { worker_connections 64; }
+${RELOAD_MAIN:-}
 http {
     access_log off;
 $RELOAD_HTTP

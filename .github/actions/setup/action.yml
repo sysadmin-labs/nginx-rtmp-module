@@ -3,7 +3,8 @@ description: What a build needs from apt, and Test::Nginx out of a cache.
 
 inputs:
   packages:
-    description: Extra apt packages this job needs
+    description: Extra apt packages this job needs, on top of what the module
+      itself needs
     required: false
     default: ''
   test-nginx:
@@ -21,7 +22,9 @@ runs:
         EXTRA_PACKAGES: ${{ inputs.packages }}
         WANT_TEST_NGINX: ${{ inputs.test-nginx }}
       run: |
-        packages="libpcre2-dev zlib1g-dev libssl-dev $EXTRA_PACKAGES"
+        # Nothing beyond what nginx itself needs.
+        module_packages=''
+        packages="libpcre2-dev zlib1g-dev libssl-dev $module_packages $EXTRA_PACKAGES"
         if [ "$WANT_TEST_NGINX" = true ]; then
           packages="$packages cpanminus"
         fi
