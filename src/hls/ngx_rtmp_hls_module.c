@@ -2352,7 +2352,31 @@ ngx_rtmp_hls_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->winfrags = conf->playlen / conf->fraglen;
     }
 
+    /*
+     * The path has to be inherited before it is looked at.  It used to be
+     * merged below this block, so an hls_path given in rtmp{} or server{}
+     * was still empty here and the cleanup was never registered for an
+     * application that inherited it -- hls_cleanup is on by default, so
+     * fragments were kept forever and the filesystem filled up with
+     * nothing logged.  Registering the path is also what makes nginx
+     * create the directory at startup, which is how the difference can be
+     * seen from outside.
+     */
+    ngx_conf_merge_str_value(conf->path, prev->path, "");
+
     /* schedule cleanup */
+
+    if (conf->hls && conf->path.len == 0) {
+        /*
+         * Not an error, so a configuration that starts today still
+         * starts: without a path the module simply writes nothing, and
+         * saying so is better than leaving the operator to work out why
+         * no playlist ever appears.
+         */
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "hls is on but no hls_path is set, "
+                           "nothing will be written");
+    }
 
     if (conf->hls && conf->path.len && conf->cleanup &&
         conf->type != NGX_RTMP_HLS_TYPE_EVENT)
@@ -2384,8 +2408,6 @@ ngx_rtmp_hls_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
     }
-
-    ngx_conf_merge_str_value(conf->path, prev->path, "");
 
     if (conf->keys && conf->cleanup && conf->key_path.len &&
         ngx_strcmp(conf->key_path.data, conf->path.data) != 0 &&

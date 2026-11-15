@@ -1466,6 +1466,26 @@ ngx_rtmp_dash_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
 
     /* schedule cleanup */
 
+    /*
+     * Same as in the hls module: inherit the path before looking at it.
+     * Merged after this block, a dash_path from rtmp{} or server{} left
+     * conf->path empty here, so an application that inherited it got no
+     * cleanup although dash_cleanup is on by default.
+     */
+    ngx_conf_merge_str_value(conf->path, prev->path, "");
+
+    if (conf->dash && conf->path.len == 0) {
+        /*
+         * Not an error, so a configuration that starts today still
+         * starts: without a path the module simply writes nothing, and
+         * saying so is better than leaving the operator to work out why
+         * no playlist ever appears.
+         */
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "dash is on but no dash_path is set, "
+                           "nothing will be written");
+    }
+
     if (conf->dash && conf->path.len && conf->cleanup) {
         if (conf->path.data[conf->path.len - 1] == '/') {
             conf->path.len--;
@@ -1495,7 +1515,6 @@ ngx_rtmp_dash_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    ngx_conf_merge_str_value(conf->path, prev->path, "");
 
     return NGX_CONF_OK;
 }
