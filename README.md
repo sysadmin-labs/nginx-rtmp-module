@@ -134,8 +134,12 @@ warning rather than writing nothing in silence.
 |`publish_time_fix`|rtmp, server, application|1 argument|
 |`rtmp`|main|no arguments, a block|
 |`server`|rtmp|no arguments, a block|
-|`so_keepalive`|rtmp, server|on | off|
+|`so_keepalive`|rtmp, server|on \| off, deprecated|
 |`timeout`|rtmp, server|1 argument|
+
+`so_keepalive` is marked deprecated in the module's own command table, so
+nginx logs a warning and points at the `so_keepalive` parameter of
+`listen` instead. It still works; use the `listen` parameter.
 
 ### Live streaming
 
@@ -290,14 +294,27 @@ warning rather than writing nothing in silence.
 ```sh
 ci/build.sh 1.30.6 /tmp/nginx-test
 TEST_NGINX_BINARY=/tmp/nginx-test/sbin/nginx prove -r t/
+ci/hls.sh /tmp/nginx-test/sbin/nginx
 ci/reload.sh /tmp/nginx-test/sbin/nginx
+ci/version.sh
 ```
 
 No RTMP client connects in the suite: that needs a handshake and a media
 stream, which belongs in a test of its own. What it asks is what nginx
-accepts in `rtmp{}`, that `rtmp_stat` serves what the module knows, and
-the inherited-path case above. The reload gate reads `rtmp_stat` after
-every reload, so it notices a module that came back without its state.
+accepts in `rtmp{}`, and that `rtmp_stat` serves what the module knows.
+The reload gate reads `rtmp_stat` after every reload, so it notices a
+module that came back without its state.
+
+`ci/hls.sh` is the gate for the inherited-path case above. It starts nginx
+with `hls_path` and `dash_path` set one level up and asserts that nginx
+created both directories: registering the path is what schedules the
+cleanup, and creating the directory is the only sign of it from outside.
+The suite can only see that the warning stays away, which a wrong merge
+order keeps true while the cleanup is gone again.
+
+`ci/version.sh` holds the version in `src/ngx_rtmp_version.h` against
+`CHANGELOG.md`. The statistics page publishes that value, and it had been
+four releases stale.
 
 ## License
 
