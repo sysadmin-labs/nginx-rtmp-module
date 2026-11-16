@@ -118,5 +118,11 @@ else
     . auto/module
 fi
 
+# Not optional: the RTMP handshake is HMAC-SHA256 over the two packets
+# (src/ngx_rtmp_handshake.c includes openssl/hmac.h and openssl/sha.h),
+# so a build of this module links against OpenSSL whether the server was
+# asked for SSL or not.  A packager offering this module as an option has
+# to make that option imply the SSL one, or a server built without SSL
+# quietly grows the dependency.
 USE_OPENSSL=YES
 
