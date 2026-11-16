@@ -58,6 +58,12 @@ jobs:
           TEST_NGINX_NO_SHUFFLE=1 \
             TEST_NGINX_BINARY="$HOME/nginx/sbin/nginx" prove -r t/
 
+      # The suite can see that the "no hls_path" warning stays away, which
+      # is not the same as the cleanup being registered.  This checks the
+      # registration itself, through the directory nginx creates for it.
+      - name: The inherited hls_path is registered
+        run: ci/hls.sh "$HOME/nginx/sbin/nginx"
+
   dynamic:
     name: loadable module
     needs: pins
@@ -82,3 +88,8 @@ jobs:
           TEST_NGINX_LOAD_MODULES="$mods" \
             TEST_NGINX_NO_SHUFFLE=1 \
             TEST_NGINX_BINARY="$HOME/nginx/sbin/nginx" prove -r t/
+
+      - name: The inherited hls_path is registered, loaded
+        run: |
+          HLS_LOAD_MODULE=$HOME/nginx/modules/ngx_rtmp_module.so \
+            ci/hls.sh "$HOME/nginx/sbin/nginx"
